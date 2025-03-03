@@ -1,0 +1,113 @@
+---
+title: "Untitled"
+author: "Jennah Levac"
+date: "2025-03-03"
+output: html_document
+---
+
+```{r}
+nexusFile <- "DragonMatrix.nex"
+
+# Read the Nexus file
+nexusLines <- readLines(nexusFile)
+
+# Define new data to append
+Entries <- c(
+  "British 100100110000100110000000001110100001001010000000011000010001011100001010011100",
+  "French 111100011100000101000100010000010000000000001100000000100000111111100001100001",
+  "Danish 10011111000010010010010010100010100000000110000001100001????0111100???11100001")
+
+# Locate the position before the end of the matrix section
+End <- which(nexusLines == ";")
+
+# Insert new data before the matrix end
+nexusLines <- append(nexusLines, Entries, after = End - 1)
+
+# Save the modified Nexus file
+writeLines(nexusLines, "UpdatedDragonMatrix.nex")
+```
+
+```{r}
+WeightsData<-read.csv("Weights.csv")
+#Step 1- creating a single vector of weights
+Weights<-paste0(WeightsData$Weight,collapse="")
+Weights<-strsplit(Weights,split="")[[1]]
+```
+
+```{r}
+WeightsNum<-rep(NA,length(Weights))
+for(i in 1:length(WeightsNum))
+  {if(Weights[i] %in% LETTERS){
+    WeightsNum[i]<-which(LETTERS==Weights[i])+9
+    } else {
+      WeightsNum[i]<-Weights[i]}}
+WeightsNum<-as.numeric(WeightsNum)
+```
+```{r}
+library(ape)
+WtDragon <- read.nexus.data("UpdatedDragonMatrix.nex")
+```
+
+```{r}
+#Step 3- multiplying the weight value by the trait vector for each dragon
+for (i in 1:length(WtDragon)){
+  RepWeight<-WtDragon[[i]]==1
+  WtDragon[[i]][RepWeight]<-WeightsNum[RepWeight]
+  RepWeight<-NA}
+```
+
+```{r}
+WtDragonDF<-data.frame(matrix(unlist(WtDragon),ncol=78,byrow=T))
+row.names(WtDragonDF)<-names(WtDragon)
+```
+
+```{r}
+WtDragonDist<-dist(WtDragonDF,method='euclidean')
+```
+```{r}
+WtDragonDistMat<-as.matrix(WtDragonDist)
+```
+
+```{r}
+library(reshape2)
+PlotSet<-melt(WtDragonDistMat)
+names(PlotSet)<-c("Query","Subject","Distance")
+```
+
+```{r}
+library(viridis)
+library(ggplot2)
+ggplot(data = PlotSet, aes(x=Query, y=Subject, fill=Distance)) +geom_tile() +scale_fill_viridis(option="magma") +theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+```
+
+```{r}
+WtDragonTree<-nj(WtDragonDist)
+p<- ggtree(WtDragonTree,layout="rectangular")
+```
+
+```{r}
+Country<-gsub("[0-9\\.]+([^X]+)X*","\\1",WtDragonTree$tip.label)
+CountryGroups<-split(WtDragonTree$tip.label, Country)
+WtDTcol<-groupOTU(WtDragonTree,CountryGroups)
+Tree<- ggtree(WtDTcol,layout="rectangular",aes(colour=group)) +geom_tiplab(size=2)
+```
+
+```{r}
+highlight <- c("British" = "blue", "French" = "red", "Danish" = "green")
+
+tip_labels <- WtDragonTree$tip.label
+highlight_tips <- c("75British", "76French", "77Danish")
+
+# Identify the nodes associated with the highlighted taxa
+highlight_nodes <- which(tip_labels %in% highlight_tips)
+
+# Plot the tree with colored branches
+Tree + 
+  geom_hilight(node = highlight_nodes[1], fill = highlight_colors["British"], alpha = 0.5) +
+  geom_hilight(node = highlight_nodes[2], fill = highlight_colors["French"], alpha = 0.5) +
+  geom_hilight(node = highlight_nodes[3], fill = highlight_colors["Danish"], alpha = 0.5) +
+  theme_tree2() +
+  ggtitle("Dragon Phylogeny with Highlighted Lineages") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold")) 
+```
+
