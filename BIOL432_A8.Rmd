@@ -6,6 +6,9 @@ output: html_document
 editor_options: 
   chunk_output_type: console
 ---
+Jennah Levac (20169998), 
+
+Gituhb Link: https://github.com/Jennah2882/BIOL432_A8
 
 ```{r, warning=FALSE, message=FALSE}
 library(ape)
